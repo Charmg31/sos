@@ -1,0 +1,82 @@
+alias: Ajuster puissance Deye & HMS2000 pour éviter l'injection (avec batterie)
+mode: single
+trigger:
+  - platform: time_pattern
+    seconds: "/15"
+condition: []
+action:
+  - variables:
+      # Niveau de charge de la batterie
+      soc_batterie: >
+        {{ states("sensor.hyper2000_soc") | float(0) }}
+
+      batterie_pleine: >
+        {{ soc_batterie >= 95 }}
+
+      # Puissance réseau
+      puissance_reseau: >
+        {{ states("sensor.yourenergyprobe") | float(0) }}
+
+      # États actuels
+      consigne_deye: >
+        {{ states("number.inverter_active_power_regulation") | float(0) }}
+      consigne_hms: >
+        {{ states("number.opendtu_hms_limit_nonpersistent_relative") | float(0) }}
+
+      # Répartition
+      facteur_deye: 0.5
+      facteur_hms: 0.5
+
+      # Calculs consigne
+      nouvelle_consigne_deye: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 %}
+          {{ consigne_deye + (puissance_reseau * facteur_deye / 100) }}
+        {% elif puissance_reseau > 50 %}
+          {{ consigne_deye + (puissance_reseau * facteur_deye / 100) }}
+        {% else %}
+          {{ consigne_deye }}
+        {% endif %}
+
+      nouvelle_consigne_hms: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 %}
+          {{ consigne_hms + (puissance_reseau * facteur_hms / 100) }}
+        {% elif puissance_reseau > 50 %}
+          {{ consigne_hms + (puissance_reseau * facteur_hms / 100) }}
+        {% else %}
+          {{ consigne_hms }}
+        {% endif %}
+
+      # Limitation entre 0 et 100 %
+      consigne_deye_limitee: >
+        {% set cible = nouvelle_consigne_deye | float(0) %}
+        {% if cible < 0 %}
+          0
+        {% elif cible > 100 %}
+          100
+        {% else %}
+          {{ cible | round(0) }}
+        {% endif %}
+
+      consigne_hms_limitee: >
+        {% set cible = nouvelle_consigne_hms | float(0) %}
+        {% if cible < 0 %}
+          0
+        {% elif cible > 100 %}
+          100
+        {% else %}
+          {{ cible | round(0) }}
+        {% endif %}
+  - service: number.set_value
+    target:
+      entity_id: number.inverter_active_power_regulation
+    data:
+      value: "{{ consigne_deye_limitee | float(0) }}"
+  - service: number.set_value
+    target:
+      entity_id: number.opendtu_hms_limit_nonpersistent_relative
+    data:
+      value: "{{ consigne_hms_limitee | float(0) }}"
