@@ -1,0 +1,66 @@
+
+Best practices:
+Manual test: before automating, try to manually control the power register via a tool (or the Home Assistant interface) to confirm that you have the right register.
+
+Filtering: you can add margins (e.g. leave a small injection of 10-20W to avoid frequent switching).
+
+Protection: make sure the automation doesn't send commands too often (avoid "spamming" the inverter).
+
+
+
+
+ Explanations:
+sensor.shelly_3em_total_power:
+Replace with the exact entity that gives the net power:
+
+Positive → you consume from the grid.
+
+Negative → you inject into the grid.
+
+Logic:
+
+If you inject (e.g. -100 W), we reduce the power (~ lower the setpoint).
+
+If you consume (e.g. +200 W), we can authorize more production (increase the setpoint).
+
+Tolerance of ±50 W: small dead zone to avoid incessant micro-adjustments.
+
+power range :
+
+I limit between 0 and 100 (you can adjust the range according to your inverter; e.g. 0% to 100% of rated power).
+
+puissance_cible_limitee is calculated to always remain within these limits.
+
+✅ Example:
+If :
+
+Mains power = -200 W (you inject 200 W),
+
+Current setpoint = 80%,
+
+→ We'll try to reduce by ~200 W (proportionally).
+
+If:
+
+Grid power = +300 W (you consume 300 W from the grid),
+
+Current setpoint = 50%,
+
+→ We can increase the setpoint, to inject less.
+
+🔧 Tips:
+Check the scale:
+
+Is your number.inverter_active_power_regulation in % of rated power or in absolute watts?
+Adapt the formula according to:
+
+If it's in watts → directly calculate the power to be achieved.
+
+If it's in % → adjusts so as not to exceed 100%.
+
+Smoothing (optional):
+To avoid too much "oscillation", you can add conditions:
+
+Modify only if the deviation exceeds a certain margin.
+
+Or apply a moving average filter to smooth it out.
