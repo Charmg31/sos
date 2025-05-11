@@ -1,0 +1,35 @@
+alias: Ajuster puissance Deye pour éviter l'injection
+description: ""
+trigger:
+  - platform: time_pattern
+    seconds: /15
+condition: []
+action:
+  - variables:
+      puissance_reseau: >-
+        {{ states('sensor.yourenergyprobe') | float(0) }}
+      puissance_actuelle: >-
+        {{ states('number.inverter_active_power_regulation') | float(0) }}
+      puissance_cible: >-
+        {% if puissance_reseau < -50 %}
+          {{ (puissance_actuelle + puissance_reseau) }}
+        {% elif puissance_reseau > 50 %}
+          {{ (puissance_actuelle + puissance_reseau) }}
+        {% else %}
+          {{ puissance_actuelle }}
+        {% endif %}
+      puissance_cible_limitee: >-
+        {% set cible = puissance_cible | float(0) %}
+        {% if cible < 0 %}
+          0
+        {% elif cible > 100 %}
+          100
+        {% else %}
+          {{ cible | round(0) }}
+        {% endif %}
+  - service: number.set_value
+    target:
+      entity_id: number.inverter_active_power_regulation
+    data:
+      value: "{{ puissance_cible_limitee | float(0) }}"
+mode: single
