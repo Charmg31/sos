@@ -1,0 +1,16 @@
+
+Objective:
+Monitor consumption/production via the Shelly Pro 3EM (e.g. injection value or net consumption).
+
+If solar production exceeds local consumption (injection risk), reduce Deye microinverter power.
+
+If local consumption increases, allow more Deye production.
+
+2️⃣ What you need:
+Home Assistant connected to both devices:
+
+Shelly Pro 3EM: which exposes entities like sensor.shelly_3em_power_xxx.
+
+Deye Inverter: via Modbus TCP (often used for this type of inverter) or via the integration you're already using.
+
+The ability to control the Deye power setpoint (for example, by modifying a Modbus register that controls the active power limit).
