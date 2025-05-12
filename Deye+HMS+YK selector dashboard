@@ -1,0 +1,96 @@
+type: custom:layout-card
+layout_type: custom:grid-layout
+layout:
+  grid-template-columns: repeat(3, 1fr)
+  grid-gap: 12px
+cards:
+  - type: custom:button-card
+    name: Mode automatique
+    icon: mdi:robot
+    entity: input_select.mode_regulation_solaire
+    tap_action:
+      action: call-service
+      service: input_select.select_option
+      service_data:
+        entity_id: input_select.mode_regulation_solaire
+        option: Auto
+    state:
+      - value: 'Auto'
+        color: green
+      - operator: default
+        color: gray
+
+  - type: custom:button-card
+    name: Forcer injection
+    icon: mdi:flash
+    entity: input_select.mode_regulation_solaire
+    tap_action:
+      action: call-service
+      service: input_select.select_option
+      service_data:
+        entity_id: input_select.mode_regulation_solaire
+        option: Forcé
+    state:
+      - value: 'Forcé'
+        color: red
+      - operator: default
+        color: gray
+
+  - type: custom:button-card
+    name: Injection limitée
+    icon: mdi:flash-off
+    entity: input_select.mode_regulation_solaire
+    tap_action:
+      action: call-service
+      service: input_select.select_option
+      service_data:
+        entity_id: input_select.mode_regulation_solaire
+        option: Limitée
+    state:
+      - value: 'Limitée'
+        color: orange
+      - operator: default
+        color: gray
+
+  - type: custom:button-card
+    name: Mode désactivé
+    icon: mdi:power
+    entity: input_select.mode_regulation_solaire
+    tap_action:
+      action: call-service
+      service: input_select.select_option
+      service_data:
+        entity_id: input_select.mode_regulation_solaire
+        option: Désactivé
+    state:
+      - value: 'Désactivé'
+        color: black
+      - operator: default
+        color: gray
+
+  - type: gauge
+    entity: sensor.hyper_2000_battery_2_soc_level
+    min: 0
+    max: 100
+    name: Batterie Hyper 2000
+    severity:
+      green: 80
+      yellow: 50
+      red: 0
+
+  - type: custom:mini-graph-card
+    entities:
+      - sensor.pv_power
+    name: Production Solaire
+    line_color: orange
+    line_width: 3
+    hours_to_show: 2
+    points_per_hour: 30
+
+  - type: entities
+    title: Consignes des onduleurs
+    entities:
+      - entity: number.inverter_active_power_regulation
+        name: Puissance Deye (%)
+      - entity: number.opendtu_hms_limit_nonpersistent_relative
+        name: Puissance HMS2000 (%)
