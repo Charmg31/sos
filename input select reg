@@ -1,0 +1,10 @@
+input_select:
+  mode_regulation_solaire:
+    name: Mode de régulation
+    options:
+      - Auto
+      - Forcé
+      - Limité
+      - Désactivé
+    initial: Désactivé
+    icon: mdi:solar-power
