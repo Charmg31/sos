@@ -1,0 +1,17 @@
+type: custom:layout-card
+layout_type: custom:grid-layout
+layout:
+  grid-template-columns: repeat(3, 1fr)
+  grid-gap: 12px
+cards:
+  - type: entities
+    title: Contrôle batterie Hyper 2000
+    entities:
+      - entity: select.hyper_2000_ac_mode
+        name: Mode AC (Hyper 2000)
+      - entity: number.hyper_2000_input_limit
+        name: Limite puissance de charge (W)
+      - entity: number.hyper_2000_output_limit
+        name: Limite puissance de décharge (W)
+      - entity: sensor.hyper_2000_electric_level
+        name: Niveau de charge actuel (%)
