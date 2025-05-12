@@ -8,3 +8,7 @@ input_select:
       - Désactivé
     initial: Désactivé
     icon: mdi:solar-power
+input_boolean:
+  mode_auto_injection:
+    name: Mode automatique injection
+    icon: mdi:robot
