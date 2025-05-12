@@ -1,0 +1,30 @@
+alias: Charger Hyper2000 veille jour rouge Tempo
+trigger:
+  - platform: time
+    at: "22:00:00"
+condition:
+  - condition: template
+    value_template: "{{ states('sensor.tempo_tomorrow_color') == 'Rouge' }}"
+  - condition: template
+    value_template: >
+      {{ states('sensor.hyper2000_battery_soc') | float(0) <
+         states('input_number.hyper2000_charge_min_tempo') | float(0) }}
+action:
+  - service: select.select_option
+    target:
+      entity_id: select.hyper2000_ac_mode
+    data:
+      option: "1"  # Mode charge
+  - service: number.set_value
+    target:
+      entity_id: number.hyper2000_set_input_limit
+    data:
+      value: 1200  # Puissance de charge en watts
+  - service: persistent_notification.create
+    data:
+      title: "🔋 Recharge Hyper2000 activée"
+      message: >
+        Batterie sous le seuil ({{ states('sensor.hyper2000_battery_soc') }}%).
+        Tempo rouge demain : recharge déclenchée.
+      notification_id: hyper2000_tempo_recharge
+mode: single
