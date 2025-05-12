@@ -24,5 +24,5 @@ Vous avez le choix entre:
 - le limiteur auto micro onduleur Deye (le sensor arrive par l'intégration Solarman)
 - le limiteur auto HMS Hoyamiles (le sensor arrive en MQTT via Opend DTU)
 - le limiteur auto mixant avec des priorités modifiables entre le Deye et le Hoymiles
-- le limiteur auto mixant Deye + HMS avec ondition de la charge batteries Zendure (hyper ou autres batteries) (intégration Fireson)
+- le limiteur auto mixant Deye + HMS avec condition de la charge batteries Zendure (hyper ou autres batteries) (intégration Fireson)
 - le limiteur auto Deye+HMS+ Bat avec selecteur de mode et son board.
