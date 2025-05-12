@@ -1,0 +1,55 @@
+alias: Ajuster puissance Deye & HMS2000 - Injection intelligente
+description: "Régule la puissance des onduleurs selon injection, batterie et soleil"
+trigger:
+  - platform: time_pattern
+    seconds: "/5"
+condition:
+  - condition: state
+    entity_id: input_boolean.mode_auto_injection
+    state: "on"
+  - condition: template
+    value_template: "{{ states('sensor.pv_power') | float(0) > 100 }}"
+  - condition: template
+    value_template: "{{ states('number.inverter_active_power_regulation') not in ['unknown', 'unavailable'] }}"
+action:
+  - variables:
+      soc_batterie: "{{ states('sensor.hyper_2000_battery_2_soc_level') | float(0) }}"
+      batterie_pleine: "{{ soc_batterie >= 95 }}"
+      puissance_reseau: "{{ states('sensor.shellypro3em_a0dd6ca0c8c8_phase_a_active_power') | float(0) }}"
+      consigne_deye: "{{ states('number.inverter_active_power_regulation') | float(0) }}"
+      consigne_hms: "{{ states('number.opendtu_hms_limit_nonpersistent_relative') | float(0) }}"
+      facteur_deye: 0.5
+      facteur_hms: 0.5
+      nouvelle_consigne_deye: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 or puissance_reseau > 50 %}
+          {{ consigne_deye + (puissance_reseau * facteur_deye / 100) }}
+        {% else %}
+          {{ consigne_deye }}
+        {% endif %}
+      nouvelle_consigne_hms: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 or puissance_reseau > 50 %}
+          {{ consigne_hms + (puissance_reseau * facteur_hms / 100) }}
+        {% else %}
+          {{ consigne_hms }}
+        {% endif %}
+      consigne_deye_limitee: >
+        {% set cible = nouvelle_consigne_deye | float(0) %}
+        {{ [0, [cible, 100] | min] | max | round(0) }}
+      consigne_hms_limitee: >
+        {% set cible = nouvelle_consigne_hms | float(0) %}
+        {{ [0, [cible, 100] | min] | max | round(0) }}
+  - service: number.set_value
+    target:
+      entity_id: number.inverter_active_power_regulation
+    data:
+      value: "{{ consigne_deye_limitee | float(0) }}"
+  - service: number.set_value
+    target:
+      entity_id: number.opendtu_hms_limit_nonpersistent_relative
+    data:
+      value: "{{ consigne_hms_limitee | float(0) }}"
+mode: single
