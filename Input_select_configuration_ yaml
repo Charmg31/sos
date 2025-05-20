@@ -1,0 +1,9 @@
+input_select:
+  mode_regulation_solaire:
+    name: Mode régulation solaire
+    options:
+      - Auto
+      - Forçage
+      - Arrêt
+    initial: Auto
+    icon: mdi:solar-power
