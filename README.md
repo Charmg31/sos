@@ -28,3 +28,36 @@ Vous avez le choix entre:
 - le limiteur auto mixant avec des priorités modifiables entre le Deye et le Hoymiles
 - le limiteur auto mixant Deye + HMS avec condition de la charge batteries Zendure (hyper ou autres batteries) (intégration Fireson)
 - le limiteur auto Deye+HMS+ Bat avec selecteur de mode et son board.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Dernier en date et le plus abouti, [Deye_HMS_No_Inject_PID](https://github.com/Charmg31/sos#:~:text=last%20week-,Deye_HMS_No_Inject_PID,-Create%20Deye_HMS_No_Inject_PID)
+Comment l'utiliser?
+1. Ajoutez ce bloc dans votre fichier configuration.yaml :
+
+input_select:
+  mode_regulation_solaire:
+    name: Mode régulation solaire
+    options:
+      - Auto
+      - Forçage
+      - Arrêt
+    initial: Auto
+    icon: mdi:solar-power
+
+2.  Méthode rapide (YAML brut)
+Aller dans Paramètres → Automatisations et scènes → Automatisations.
+
+Cliquez sur Ajouter une automatisation puis sur Démarrer avec une automatisation vide.
+
+En haut à droite, cliquez sur ⋮ (trois points) puis Modifier en YAML.
+
+Collez votre code YAML dans l’éditeur.
+
+Personalisez/adaptez à votre propre sensor de sonde
+
+Cliquez sur Enregistrer.
+3. Option dashboard 
+[Deye+HMS+YK](https://github.com/Charmg31/sos/blob/main/Deye%2BHMS%2BYK%20selector%20dashboard) selector dashboard est un dash bord à modifier suivant vos besoins
+
+
