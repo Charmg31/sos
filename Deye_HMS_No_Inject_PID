@@ -1,0 +1,123 @@
+alias: Ajuster puissance Deye & HMS2000 - Injection intelligente PID 5(Stable)
+description: Régulation PID avec filtrage et sécurité renforcée
+
+triggers:
+  - seconds: /15  # Déclenchement toutes les 15 secondes
+    trigger: time_pattern
+
+conditions: []    # Aucune condition globale
+
+actions:
+  - choose:
+      - conditions:  # Mode automatique
+          - condition: state
+            entity_id: input_select.mode_regulation_solaire
+            state: Auto
+        sequence:
+          - variables:
+              # Section historique des mesures
+              historique_puissance_str: >-
+                {{ state_attr('input_text.historique_puissance', 'text') | default('') }}
+              historique_puissance: |-
+                {% if historique_puissance_str %}
+                  {{ historique_puissance_str | from_json }}
+                {% else %}
+                  []
+                {% endif %}
+              
+              # Mesure brute de puissance (négative pour inversion de sens)
+              puissance_brute: >-
+                {{ states('sensor.votre_sonde_active_power') | float(0) * -1 }}
+              
+              # Filtrage par moyenne mobile
+              new_historique: >-
+                {{ (historique_puissance + [puissance_brute])[-fenetre_moyenne:] }}
+              puissance_filtree: "{{ (new_historique | sum) / (new_historique | count) }}"
+              
+              # Calcul des composantes PID
+              erreur: "{{ target_puissance - puissance_filtree }}"
+              integral: >-
+                {{ (state_attr('input_number.integral', 'value') | float(0)) + erreur * intervalle_mesure }}
+              derivee: >-
+                {{ (erreur - (state_attr('input_number.derniere_erreur', 'value') | float(0))) / intervalle_mesure }}
+              
+              # Calcul de la correction PID (P + I seulement ici)
+              correction: "{{ (facteur_p * erreur + facteur_i * integral) | round(0) }}"
+              
+              # Gestion des consignes
+              consigne_actuelle_deye: >-
+                {{ states('number.inverter_active_power_regulation') | float(0) }}
+              consigne_actuelle_hms: "{{ states('number.opendtu_hms_limit') | float(0) }}"
+              
+              # Calcul des nouvelles consignes avec limites
+              nouvelle_consigne_deye_raw: "{{ [consigne_actuelle_deye + correction, 100] | min }}"
+              nouvelle_consigne_deye: >-
+                {{ [nouvelle_consigne_deye_raw, consigne_actuelle_deye - max_step] | max }}
+              nouvelle_consigne_hms_raw: "{{ [consigne_actuelle_hms + correction, 100] | min }}"
+              nouvelle_consigne_hms: >-
+                {{ [nouvelle_consigne_hms_raw, consigne_actuelle_hms - max_step] | max }}
+
+          - if:  # Application si hors deadband
+              - condition: template
+                value_template: "{{ (puissance_filtree | abs) > deadband }}"
+            then:
+              - action: number.set_value  # Application Deye
+                target:
+                  entity_id: number.inverter_active_power_regulation
+                data:
+                  value: >-
+                    {{ [consigne_min, nouvelle_consigne_deye] | max | round(0) }}
+              
+              - action: number.set_value  # Application HMS
+                target:
+                  entity_id: number.opendtu_hms_limit_nonpersistent_relative
+                data:
+                  value: "{{ [consigne_min, nouvelle_consigne_hms] | max | round(0) }}"
+          
+          # Mise à jour des états persistants
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.historique_puissance
+            data:
+              value: "{{ new_historique | to_json }}"
+              
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.integral
+            data:
+              value: "{{ integral }}"
+              
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.derniere_erreur
+            data:
+              value: "{{ erreur }}"
+
+      - conditions:  # Mode forcé
+          - condition: state
+            entity_id: input_select.mode_regulation_solaire
+            state: Forçage
+        sequence:
+          - action: number.set_value  # Forçage à 100%
+            target:
+              entity_id: number.inverter_active_power_regulation
+            data:
+              value: 100
+              
+          - action: number.set_value
+            target:
+              entity_id: number.opendtu_hms_limit_nonpersistent_relative
+            data:
+              value: 100
+
+mode: single  # Exécution unique même si déclencheurs multiples
+
+variables:  # Paramètres ajustables
+  facteur_p: 0.6      # Gain proportionnel
+  facteur_i: 0.06     # Gain intégral
+  deadband: 20        # Bande morte (W)
+  intervalle_mesure: 15  # Intervalle entre mesures (secondes)
+  fenetre_moyenne: 5  # Taille fenêtre moyenne mobile
+  max_step: 10        # Variation maximale par cycle
+  target_puissance: 5 # Puissance cible (W)
+  consigne_min: 10    # Consigne minimale (%)
