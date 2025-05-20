@@ -33,17 +33,8 @@ Vous avez le choix entre:
 
 Dernier en date et le plus abouti, [Deye_HMS_No_Inject_PID](https://github.com/Charmg31/sos#:~:text=last%20week-,Deye_HMS_No_Inject_PID,-Create%20Deye_HMS_No_Inject_PID)
 Comment l'utiliser?
-1. Ajoutez ce bloc dans votre fichier configuration.yaml :
+1. Ajoutez ce [bloc ](https://github.com/Charmg31/sos/blob/main/Input_select_configuration_%20yaml)dans votre fichier configuration.yaml :
 
-input_select:
-  mode_regulation_solaire:
-    name: Mode régulation solaire
-    options:
-      - Auto
-      - Forçage
-      - Arrêt
-    initial: Auto
-    icon: mdi:solar-power
 
 2.  Méthode rapide (YAML brut)
 Aller dans Paramètres → Automatisations et scènes → Automatisations.
