@@ -1,0 +1,106 @@
+alias: Ajuster puissance Deye x3 pour éviter l'injection (avec batterie)
+mode: single
+
+# 🔁 Déclenche toutes les 15 secondes
+trigger:
+  - platform: time_pattern
+    seconds: "/15"
+
+condition: []
+
+action:
+  - variables:
+      # 🔋 Niveau de charge actuel de la batterie (SOC)
+      soc_batterie: >
+        {{ states("sensor.hyper2000_soc") | float(0) }}
+
+      # ✅ Détermine si la batterie est considérée comme "pleine"
+      batterie_pleine: >
+        {{ soc_batterie >= 95 }}
+
+      # ⚡ Puissance réseau actuelle (en W, négatif = injection)
+      puissance_reseau: >
+        {{ states("sensor.yourenergyprobe") | float(0) }}
+
+      # 🔢 Récupère les consignes actuelles des 3 onduleurs Deye
+      consigne_deye_1: >
+        {{ states("number.inverter1_active_power_regulation") | float(0) }}
+      consigne_deye_2: >
+        {{ states("number.inverter2_active_power_regulation") | float(0) }}
+      consigne_deye_3: >
+        {{ states("number.inverter3_active_power_regulation") | float(0) }}
+
+      # ➗ Répartition équitable entre les 3 onduleurs Deye
+      facteur_deye: 1 / 3
+
+      # 🔧 Calcul de la nouvelle consigne pour Deye 1
+      nouvelle_consigne_deye_1: >
+        {% if not batterie_pleine %}
+          100  # Si la batterie n'est pas pleine, on injecte à 100%
+        {% elif puissance_reseau < -50 or puissance_reseau > 50 %}
+          # Si on injecte trop ou consomme trop, on corrige la consigne
+          {{ consigne_deye_1 + (puissance_reseau * facteur_deye / 100) }}
+        {% else %}
+          # Sinon, on garde la même consigne
+          {{ consigne_deye_1 }}
+        {% endif %}
+
+      # 🔧 Même logique pour Deye 2
+      nouvelle_consigne_deye_2: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 or puissance_reseau > 50 %}
+          {{ consigne_deye_2 + (puissance_reseau * facteur_deye / 100) }}
+        {% else %}
+          {{ consigne_deye_2 }}
+        {% endif %}
+
+      # 🔧 Et pour Deye 3
+      nouvelle_consigne_deye_3: >
+        {% if not batterie_pleine %}
+          100
+        {% elif puissance_reseau < -50 or puissance_reseau > 50 %}
+          {{ consigne_deye_3 + (puissance_reseau * facteur_deye / 100) }}
+        {% else %}
+          {{ consigne_deye_3 }}
+        {% endif %}
+
+      # 🔒 Sécurise les valeurs dans une plage [0, 100] pour Deye 1
+      consigne_deye_1_limitee: >
+        {% set cible = nouvelle_consigne_deye_1 | float(0) %}
+        {% if cible < 0 %} 0
+        {% elif cible > 100 %} 100
+        {% else %} {{ cible | round(0) }} {% endif %}
+
+      # 🔒 Idem pour Deye 2
+      consigne_deye_2_limitee: >
+        {% set cible = nouvelle_consigne_deye_2 | float(0) %}
+        {% if cible < 0 %} 0
+        {% elif cible > 100 %} 100
+        {% else %} {{ cible | round(0) }} {% endif %}
+
+      # 🔒 Et pour Deye 3
+      consigne_deye_3_limitee: >
+        {% set cible = nouvelle_consigne_deye_3 | float(0) %}
+        {% if cible < 0 %} 0
+        {% elif cible > 100 %} 100
+        {% else %} {{ cible | round(0) }} {% endif %}
+
+  # ✅ Applique la consigne limitée à chaque onduleur
+  - service: number.set_value
+    target:
+      entity_id: number.inverter1_active_power_regulation
+    data:
+      value: "{{ consigne_deye_1_limitee }}"
+
+  - service: number.set_value
+    target:
+      entity_id: number.inverter2_active_power_regulation
+    data:
+      value: "{{ consigne_deye_2_limitee }}"
+
+  - service: number.set_value
+    target:
+      entity_id: number.inverter3_active_power_regulation
+    data:
+      value: "{{ consigne_deye_3_limitee }}"
