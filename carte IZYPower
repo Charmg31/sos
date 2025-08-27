@@ -1,0 +1,49 @@
+type: picture-elements  # Type de carte Home Assistant qui permet de superposer des éléments sur une image de fond
+image: /local/images/Isypower.jpg  # Chemin vers l'image utilisée en fond, ici une photo locale capture écran rétouchée(à placer dans www/images)
+
+elements:  # Liste des éléments à afficher sur l'image
+  - type: state-label  # Affiche la valeur d'un capteur sous forme de texte
+    entity: sensor.shellypro3em_levotre_phase_a_active_power  # Capteur consommation active phase A changer avec le votre
+    style:  # Style CSS appliqué à ce texte
+      top: 14%  # Position verticale en pourcentage depuis le haut de l'image
+      left: 25%  # Position horizontale en pourcentage depuis la gauche de l'image
+      color: white  # Couleur du texte
+      font-size: 18px  # Taille du texte
+      font-weight: bold  # Texte en gras
+
+  - type: state-label
+    entity: sensor.prodtotale  # Capteur production totale à modifier
+    style:
+      top: 14%
+      left: 55%
+      color: white
+      font-size: 18px
+      font-weight: bold
+
+  - type: state-label
+    entity: sensor.energie_maison_jour_total  # Capteur énergie totale réseau/journalière à modifier
+    style:
+      top: 56%
+      left: 22%
+      color: white
+      font-size: 18px
+      font-weight: bold
+
+  - type: state-label
+    entity: sensor.hyper_2000_pack_input_power  # Puissance batterie entrée pack Hyper 2000 à modifier ou pas
+    style:
+      top: 54%
+      left: 50%
+      color: white
+      font-size: 18px
+      font-weight: bold
+
+  - type: state-label
+    entity: sensor.hyper_2000_electric_level  # Niveau électrique batterie Hyper 2000 (en % ou charge) à modifier ou pas
+    style:
+      top: 57%
+      left: 50%
+      color: green  # Texte en vert pour indiquer un état positif (niveau batterie)
+      font-size: 14px  # Taille du texte plus petite pour ce label
+      font-weight: bold
+
