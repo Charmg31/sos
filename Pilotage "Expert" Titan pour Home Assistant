@@ -1,0 +1,120 @@
+# 🚀 Pilotage "Expert" Titan pour Home Assistant
+
+Ce projet implémente une régulation de puissance dynamique (Zéro-Export) pour l'onduleur **Titan**. Il utilise un algorithme **PI (Proportionnel-Intégral)** avec **moyenne mobile** pour effacer précisément la consommation de la maison en temps réel.
+
+---
+
+## 📋 Pré-requis
+
+### 1. Entités (Helpers) à créer
+Créez les entrées suivantes via l'interface Home Assistant (`Paramètres` > `Appareils et services` > `Entrées`) :
+
+* `input_boolean.pilotage_titan_auto` : Interrupteur ON/OFF du mode Expert.
+* `input_text.historique_puissance_titan` : Stocke le lissage JSON des mesures.
+* `input_number.titan_integral` : Stocke la mémoire de l'erreur (Précision).
+* `input_number.titan_consigne_calculee` : Puissance de sortie actuelle.
+
+### 2. Commandes REST (`configuration.yaml`)
+Ajoutez ces commandes pour permettre à Home Assistant de piloter l'onduleur :
+
+```yaml
+rest_command:
+  titan_set_discharge_power:
+    url: "http://VOTRE_IP_TITAN/set?power={{ power }}"
+  titan_stop:
+    url: "http://VOTRE_IP_TITAN/set?power=0"
+
+🧠 L'Algorithme de Régulation (L'automatisation)
+Cette automatisation calcule la consigne idéale chaque fois que votre capteur réseau change d'état. Elle utilise une Moyenne Mobile pour éviter les oscillations.
+---------------------------------------------------------------------------------------------
+
+alias: "Titan : Régulation Master Héritage (FINAL)"
+description: "Régulation dynamique de la décharge batterie pour atteindre 0W réseau"
+triggers:
+  - trigger: state
+    entity_id: sensor.YOUR_NETWORK_SENSOR_POWER # Remplacer par votre Shelly
+  - trigger: state
+    entity_id: input_boolean.pilotage_titan_auto
+    to: "off"
+    id: "stop"
+
+variables:
+  facteur_p: 0.7        # Réactivité (Proportionnel)
+  facteur_i: 0.2        # Précision (Intégral)
+  fenetre_moyenne: 3    # Lissage (secondes)
+  target_puissance: 0   # Cible réseau (0 Watts)
+  deadband: 5           # Bande morte (Watts)
+
+actions:
+  - choose:
+      # --- CAS 1 : ARRET DU SYSTÈME ---
+      - conditions:
+          - condition: trigger
+            id: "stop"
+        sequence:
+          - action: input_number.set_value
+            target: { entity_id: input_number.titan_consigne_calculee }
+            data: { value: 0 }
+          - action: input_number.set_value
+            target: { entity_id: input_number.titan_integral }
+            data: { value: 0 }
+          - action: input_text.set_value
+            target: { entity_id: input_text.historique_puissance_titan }
+            data: { value: "[]" }
+          - action: rest_command.titan_stop
+
+      # --- CAS 2 : RÉGULATION ACTIVE ---
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.pilotage_titan_auto
+            state: "on"
+        sequence:
+          - variables:
+              historique_raw: "{{ states('input_text.historique_puissance_titan') }}"
+              puissance_brute: "{{ states('sensor.YOUR_NETWORK_SENSOR_POWER') | float(0) }}"
+              
+              # Filtrage Moyenne Mobile sécurisé
+              new_historique: >-
+                {% set h = (historique_raw | from_json(default=[])) if historique_raw not in ['unknown', 'unavailable', 'none', ''] else [] %}
+                {% set h_list = h if h is iterable and h is not string else [] %}
+                {{ (h_list + [puissance_brute])[-fenetre_moyenne:] }}
+              
+              puissance_filtree: "{{ (new_historique | sum) / (new_historique | count) if new_historique | count > 0 else puissance_brute }}"
+
+              # Calcul PI
+              erreur: "{{ puissance_filtree - target_puissance }}"
+              old_integral: "{{ states('input_number.titan_integral') | float(0) }}"
+              new_integral: "{{ ([ (old_integral + erreur), 500 ] | min, -500) | max }}"
+              
+              consigne_actuelle: "{{ states('input_number.titan_consigne_calculee') | float(0) }}"
+              correction: "{{ (facteur_p * erreur) + (facteur_i * new_integral) }}"
+              nouvelle_consigne: "{{ ([ (consigne_actuelle + correction) | int, 2400 ] | min, 0) | max }}"
+
+          # Application des ordres au Titan
+          - if:
+              - condition: template
+                value_template: "{{ (puissance_filtree | abs) > deadband }}"
+            then:
+              - action: input_number.set_value
+                target: { entity_id: input_number.titan_consigne_calculee }
+                data: { value: "{{ nouvelle_consigne }}" }
+              - action: rest_command.titan_set_discharge_power
+                data: { power: "{{ nouvelle_consigne }}" }
+
+          # Archivage pour le cycle suivant
+          - action: input_text.set_value
+            target: { entity_id: input_text.historique_puissance_titan }
+            data: { value: "{{ new_historique | to_json }}" }
+          - action: input_number.set_value
+            target: { entity_id: input_number.titan_integral }
+            data: { value: "{{ new_integral }}" }
+
+mode: restart
+
+-----------------------------------------------------------------------------------------
+📅 Programmation (Scheduler Card)
+Pour basculer entre les modes proprement (ex: Expert le jour, Natif la nuit), utilisez deux scripts dans votre carte de planification :
+
+Script Expert : Active input_boolean.pilotage_titan_auto.
+
+Script Natif : Désactive input_boolean.pilotage_titan_auto et envoie l'ordre REST de votre mode habituel.
