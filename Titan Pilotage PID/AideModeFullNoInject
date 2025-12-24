@@ -8,3 +8,19 @@ Protection Relais (max_step) : Empêche les changements brusques (ex: passer de 
 Zone Morte (deadband: 15) : Tant que l'écart à la maison est inférieur à 15W, l'automatisation ne renvoie pas de commande. Cela économise les cycles d'écriture et la bande passante Wi-Fi de la batterie.
 
 Anti-Windup : L'intégrale est bridée à 500 pour éviter que le système ne continue de "pousser" alors que la batterie est déjà au maximum de ses capacités.
+
+
+PI regulation, moving average filtering, surplus management (charging), and hardware safety features (speed limitation and extended deadband).
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------
+Summary of built-in protections:
+
+Peak smoothing: The 4-point moving average prevents the battery from reacting to electrical noise or spikes.
+
+Relay protection (max_step): Prevents sudden changes (e.g., jumping from 0 to 3000 W instantly). Power increases gradually.
+
+Deadband (deadband: 15): As long as the home power deviation is below 15 W, the automation sends no command. This saves write cycles and reduces the battery’s Wi-Fi traffic.
+
+Anti-windup: The integral term is capped at 500 to stop the system from "pushing" when the battery has already reached its maximum capability.
