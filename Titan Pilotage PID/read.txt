@@ -6,9 +6,9 @@ Pour que cette automatisation fonctionne parfaitement, vous devez avoir créé l
 Rappel du fonctionnement PID
 Le système fonctionne comme un thermostat intelligent :
 
-Le Capteur (Shelly) donne la température actuelle (puissance maison).
+Le Capteur (Shelly ou autre) donne la température actuelle (puissance maison).
 
-Le Facteur P (Proportionnel) donne un grand coup d'accélérateur si l'écart est grand.
+Le Facteur P (Proportionnel) donne un grand coup d'accélérateur si l'écart est grand. Il est réglable suivant vos besoins. 0.7 étant la valeur de réactivité moyenne.
 
 Le Facteur I (Intégral) donne de petits coups de pouce constants pour éliminer les derniers watts d'écart.
 
@@ -24,8 +24,9 @@ input_text.historique_puissance_titan,Texte,"Stocke les dernières mesures au fo
 
 
 Le Matériel et l'Intégration
-Compteur d'énergie : L'entité sensor.conso_3em_puissance / votre SmartMeter doit être disponible et remonter des Watts (positifs en consommation, négatifs en injection).
+Compteur d'énergie : L'entité sensor.conso_puissance / votre SmartMeter doit être disponible et remonter des Watts (positifs en consommation, négatifs en injection).
+Important: Vous devez éditer l'automatisation pour insérer votre propre sensor puissance, reflet de la consommation/injection.
 
 Intégration IzyPower : L'intégration izypower_titan_private doit être installée et configurée pour que les services discharge, stop et charge soient fonctionnels.
 
-Device ID : Assurez-vous que le code f4xxxxxxxxxxxxxxxx correspond bien à votre batterie Titan actuelle dans l'intégration.
+Device ID : Editez l'ID de votre Titan, assurez-vous que le code f4xxxxxxxxxxxxxxxx correspond bien à votre batterie Titan actuelle (Master dans un cluster) dans l'intégration.
