@@ -1,0 +1,26 @@
+Rappel du fonctionnement PID
+Le système fonctionne comme un thermostat intelligent :
+
+Le Capteur (Shelly) donne la température actuelle (puissance maison).
+
+Le Facteur P (Proportionnel) donne un grand coup d'accélérateur si l'écart est grand.
+
+Le Facteur I (Intégral) donne de petits coups de pouce constants pour éliminer les derniers watts d'écart.
+
+
+
+
+Nom de l'entité,Type,Description
+input_boolean.pilotage_titan_auto,Interrupteur (Toggle),Sert à activer/désactiver la régulation PID.
+input_number.titan_facteur_p,Nombre (Slider),"Réglage de la réactivité (0.1 à 2.0, pas de 0.05)."
+input_number.titan_consigne_calculee,Nombre (Box),Stocke la dernière puissance envoyée (0 à 3000).
+input_number.titan_integral,Nombre (Box),"Stocke l'accumulation de l'erreur (Min: -500, Max: 500)."
+input_text.historique_puissance_titan,Texte,"Stocke les dernières mesures au format JSON (ex: [10, 15, 5])."
+
+
+Le Matériel et l'Intégration
+Compteur d'énergie : L'entité sensor.conso_3em_puissance / votre SmartMeter doit être disponible et remonter des Watts (positifs en consommation, négatifs en injection).
+
+Intégration IzyPower : L'intégration izypower_titan_private doit être installée et configurée pour que les services discharge, stop et charge soient fonctionnels.
+
+Device ID : Assurez-vous que le code f4xxxxxxxxxxxxxxxx correspond bien à votre batterie Titan actuelle dans l'intégration.
