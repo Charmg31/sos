@@ -1,16 +1,21 @@
 Pour que cette automatisation fonctionne parfaitement, vous devez avoir créé les Entrées (Helpers) et les Services suivants dans Home Assistant.
 
-
-
-
 Rappel du fonctionnement PID
 Le système fonctionne comme un thermostat intelligent :
-
 Le Capteur (Shelly ou autre) donne la température actuelle (puissance maison).
-
 Le Facteur P (Proportionnel) donne un grand coup d'accélérateur si l'écart est grand. Il est réglable suivant vos besoins. 0.7 étant la valeur de réactivité moyenne.
-
 Le Facteur I (Intégral) donne de petits coups de pouce constants pour éliminer les derniers watts d'écart.
+------------------------------------------------------------------------------------------------------------------------
+To make this automation work perfectly, you must have created the following Entries (Helpers) and Services in Home Assistant.
+
+PID operation reminder
+The system works like an intelligent thermostat:
+The Sensor (Shelly or other) provides the current temperature (house power consumption).
+The P Factor (Proportional) gives a big acceleration kick if the error is large. It can be adjusted to your needs, with 0.7 being the typical reactive value.
+The I Factor (Integral) provides small, constant nudges to eliminate the last watts of error.
+
+
+
 
 
 
@@ -26,7 +31,12 @@ input_text.historique_puissance_titan,Texte,"Stocke les dernières mesures au fo
 Le Matériel et l'Intégration
 Compteur d'énergie : L'entité sensor.conso_puissance / votre SmartMeter doit être disponible et remonter des Watts (positifs en consommation, négatifs en injection).
 Important: Vous devez éditer l'automatisation pour insérer votre propre sensor puissance, reflet de la consommation/injection.
-
-Intégration IzyPower : L'intégration izypower_titan_private doit être installée et configurée pour que les services discharge, stop et charge soient fonctionnels.
-
+Intégration IzyPower : L'intégration izypower_titan Khirale doit être installée et configurée pour que les services discharge, stop et charge soient fonctionnels.
 Device ID : Editez l'ID de votre Titan, assurez-vous que le code f4xxxxxxxxxxxxxxxx correspond bien à votre batterie Titan actuelle (Master dans un cluster) dans l'intégration.
+
+--------------------------------------------------------------------------------------------------------------------------------
+Hardware and Integration
+Energy Meter: The entity sensor.conso_puissance (or your SmartMeter) must be available and report power in watts (positive for consumption, negative for injection).
+Important: You must edit the automation to insert your own power sensor that reflects consumption/injection.
+IzyPower Integration: The izypower_titan Khirale integration must be installed and configured for the discharge, stop, and charge services to function properly.
+Device ID: Edit your Titan’s ID and make sure the code f4xxxxxxxxxxxxxxxx matches your current Titan battery (the Master in a cluster) within the integration.
