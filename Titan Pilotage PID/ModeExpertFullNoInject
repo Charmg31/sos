@@ -1,9 +1,12 @@
-alias: "🚀 Titan : Régulation Master Universelle (FULL : Décharge, Charge & Sécurité)"
-description: "Régulation PID avec gestion du surplus solaire, filtrage moyenne mobile et protection des composants."
+alias: "🚀 Titan : Régulation Master Universelle (ASYNCHRONE & RÉACTIF) CMG"
+description: >-
+  Régulation PI avec chute de puissance ultra-rapide (anti-injection) et montée contrôlée.
+  Incorpore une logique asymétrique pour protéger le réseau et optimiser l'autoconsommation.
 
 triggers:
   - trigger: state
-    entity_id: sensor.conso_3em_puissance # Le capteur de test (Shelly)
+    # REMPLACER CI-DESSOUS : le sensor puissance votre compteur
+    entity_id: sensor.shellypro3em_xxxx_energy_meter_0_puissance
   - trigger: state
     entity_id: input_boolean.pilotage_titan_auto
     to: "off"
@@ -11,13 +14,12 @@ triggers:
 
 actions:
   - choose:
-      # ==========================================================
-      # 1. MODE SÉCURITÉ / ARRÊT 
-      # ==========================================================
+      # --- BLOC 1 : ARRÊT DE LA RÉGULATION (Mode Manuel ou Stop) ---
       - conditions:
           - condition: trigger
             id: stop
         sequence:
+          # Réinitialisation des calculs et de l'historique pour repartir à zéro au prochain ON
           - action: input_number.set_value
             target:
               entity_id: input_number.titan_consigne_calculee
@@ -33,65 +35,64 @@ actions:
               entity_id: input_text.historique_puissance_titan
             data:
               value: "[]"
-          # Commande d'arrêt physique via l'intégration
+          # Commande d'arrêt physique de la batterie
           - action: izypower_titan_private.stop
             data:
               device_id: f4e87da5be832718cad4e2012a49f56d
 
-      # ==========================================================
-      # 2. MODE RÉGULATION ACTIVE (AUTO)
-      # ==========================================================
+      # --- BLOC 2 : RÉGULATION ACTIVE (Mode Auto ON) ---
       - conditions:
           - condition: state
             entity_id: input_boolean.pilotage_titan_auto
             state: "on"
         sequence:
           - variables:
-              # --- RÉCUPÉRATION DES DONNÉES ---
               historique_raw: "{{ states('input_text.historique_puissance_titan') }}"
-              puissance_brute: "{{ states('sensor.conso_3em_puissance') | float(0) }}"
               
-              # --- FILTRAGE MOYENNE MOBILE ---
-              # Nettoyage et mise à jour de la liste des dernières mesures
+              # RÉCUPÉRATION DE LA MESURE : le sensor puissance votre compteur
+              puissance_brute: "{{ states('sensor.shellypro3em_xxxxx_energy_meter_0_puissance') | float(0) }}"
+              
+              # Traitement du lissage (Moyenne Mobile)
               new_historique: >-
                 {% set h = (historique_raw | from_json(default=[])) if
                 historique_raw not in ['unknown', 'unavailable', 'none', '']
-                else [] %} 
-                {% set h_list = h if h is iterable and h is not string else [] %}
-                {{ (h_list + [puissance_brute])[-fenetre_moyenne:] }}
+                else [] %} {% set h_list = h if h is iterable and h is not
+                string else [] %} {{ (h_list +
+                [puissance_brute])[-fenetre_moyenne:] }}
               
-              # Calcul de la puissance lissée
               puissance_filtree: >-
                 {{ (new_historique | sum) / (new_historique | count) if
                 new_historique | count > 0 else puissance_brute }}
               
-              # --- CALCUL PI (Proportionnel + Intégral) ---
+              # Calcul de l'écart (Erreur) par rapport à la cible (0W)
               erreur: "{{ puissance_filtree - target_puissance }}"
+              
+              # Calcul de la part Intégrale (mémoire de l'erreur)
               old_integral: "{{ states('input_number.titan_integral') | float(0) }}"
-              # Anti-windup : on limite l'accumulation de l'intégrale entre -500 et 500
               new_integral: "{{ ([ (old_integral + erreur), 500 ] | min, -500) | max }}"
               
-              # Calcul de la correction théorique
+              # Calcul de la correction théorique (P + I)
               consigne_actuelle: "{{ states('input_number.titan_consigne_calculee') | float(0) }}"
               correction_brute: "{{ (facteur_p * erreur) + (facteur_i * new_integral) }}"
               
-              # --- SÉCURITÉ MATÉRIELLE : RATE LIMITING ---
-              # On limite la variation à max_step (ex: 400W) par cycle pour préserver les relais
-              max_step: 400
+              # --- LOGIQUE ASYMÉTRIQUE DE SÉCURITÉ ---
+              # Si on injecte (erreur < 0), on s'autorise à couper 2500W d'un coup.
+              # Si on consomme (erreur > 0), on limite la montée à 600W pour la stabilité.
+              max_step: "{{ 2500 if erreur < 0 else 600 }}"
+              
               correction_bridee: >-
                 {{ ([ ([correction_brute, max_step] | min), -max_step ] | max) }}
               
-              # Calcul de la nouvelle consigne finale (Bornes : -2500W charge, 3000W décharge)
+              # Calcul final de la consigne (Bornes : -2500W à 3000W)
               nouvelle_consigne: >-
                 {{ ([ (consigne_actuelle + correction_bridee) | int, 3000 ] | min, -2500) | max }}
 
-          # --- EXÉCUTION DE L'ACTION ---
           - if:
-              # Zone morte de 15W pour éviter les micro-oscillations inutiles
+              # Activation uniquement si l'écart dépasse la zone morte (deadband)
               - condition: template
                 value_template: "{{ (puissance_filtree | abs) > deadband }}"
             then:
-              # Mise à jour de l'affichage de la consigne
+              # Enregistrement de la nouvelle consigne dans l'interface
               - action: input_number.set_value
                 target:
                   entity_id: input_number.titan_consigne_calculee
@@ -99,7 +100,7 @@ actions:
                   value: "{{ nouvelle_consigne }}"
               
               - choose:
-                  # CAS A : DÉCHARGE (Consommation détectée)
+                  # CAS : Décharge (Consommation maison)
                   - conditions:
                       - condition: template
                         value_template: "{{ nouvelle_consigne > 0 }}"
@@ -110,7 +111,7 @@ actions:
                           power: "{{ nouvelle_consigne }}"
                           soc_limit: 10
                   
-                  # CAS B : CHARGE (Surplus solaire détecté)
+                  # CAS : Charge (Surplus solaire)
                   - conditions:
                       - condition: template
                         value_template: "{{ nouvelle_consigne < 0 }}"
@@ -118,10 +119,10 @@ actions:
                       - action: izypower_titan_private.charge
                         data:
                           device_id: f4e87da5be832718cad4e2012a49f56d
-                          power: "{{ nouvelle_consigne | abs }}" # Conversion en valeur positive pour le service
+                          power: "{{ nouvelle_consigne | abs }}"
                           soc_limit: 100
 
-          # --- SAUVEGARDE DES ÉTATS ---
+          # --- SAUVEGARDE DES ÉTATS POUR LE PROCHAIN CYCLE ---
           - action: input_text.set_value
             target:
               entity_id: input_text.historique_puissance_titan
@@ -134,11 +135,15 @@ actions:
               value: "{{ new_integral }}"
 
 variables:
-  # Récupération dynamique via votre slider HA
+  # Sensibilité via votre slider
   facteur_p: "{{ states('input_number.titan_facteur_p') | float(0.7) }}"
+  # Facteur constant pour stabiliser l'erreur résiduelle
   facteur_i: 0.2
-  fenetre_moyenne: 4 # Nombre de mesures pour le lissage
-  target_puissance: 0 # On vise le 0 Watt
-  deadband: 15 # Seuil d'activation (Zone morte)
+  # Fenêtre courte (2) pour une réaction asymétrique efficace
+  fenetre_moyenne: 2
+  # Cible de régulation (0W pour effacer la facture)
+  target_puissance: 0
+  # Zone de tolérance (en Watts) pour éviter les micro-ajustements
+  deadband: 8
 
 mode: restart
