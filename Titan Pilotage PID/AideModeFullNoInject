@@ -1,0 +1,10 @@
+Régulation PI, le filtrage par moyenne mobile, la gestion du surplus (charge), ainsi que les sécurités matérielles (limitation de vitesse et zone morte élargie).
+
+Résumé des protections intégrées :
+Lissage des pics : La moyenne mobile sur 4 points évite que la batterie ne réagisse à un parasite électrique.
+
+Protection Relais (max_step) : Empêche les changements brusques (ex: passer de 0 à 3000W d'un coup). La montée en puissance est progressive.
+
+Zone Morte (deadband: 15) : Tant que l'écart à la maison est inférieur à 15W, l'automatisation ne renvoie pas de commande. Cela économise les cycles d'écriture et la bande passante Wi-Fi de la batterie.
+
+Anti-Windup : L'intégrale est bridée à 500 pour éviter que le système ne continue de "pousser" alors que la batterie est déjà au maximum de ses capacités.
