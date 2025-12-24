@@ -1,0 +1,105 @@
+alias: "🚀 Titan : Régulation Master Universelle (Services + Test)"
+description: Régulation PI via services izypower et capteur Shelly de test
+triggers:
+  - trigger: state
+    entity_id: sensor.conso_3em_puissance # Nouveau capteur de test
+  - trigger: state
+    entity_id: input_boolean.pilotage_titan_auto
+    to: "off"
+    id: stop
+actions:
+  - choose:
+      # --- MODE SÉCURITÉ / ARRÊT ---
+      - conditions:
+          - condition: trigger
+            id: stop
+        sequence:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.titan_consigne_calculee
+            data:
+              value: 0
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.titan_integral
+            data:
+              value: 0
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.historique_puissance_titan
+            data:
+              value: "[]"
+          # Utilisation du nouveau service STOP officiel
+          - action: izypower_titan_private.stop
+            data:
+              device_id: f4e87da5be832718cad4e2012a49f56d
+
+      # --- MODE RÉGULATION AUTO ---
+      - conditions:
+          - condition: state
+            entity_id: input_boolean.pilotage_titan_auto
+            state: "on"
+        sequence:
+          - variables:
+              historique_raw: "{{ states('input_text.historique_puissance_titan') }}"
+              # Lecture du nouveau capteur de test
+              puissance_brute: "{{ states('sensor.conso_3em_puissance') | float(0) }}"
+              
+              new_historique: >-
+                {% set h = (historique_raw | from_json(default=[])) if
+                historique_raw not in ['unknown', 'unavailable', 'none', '']
+                else [] %} {% set h_list = h if h is iterable and h is not
+                string else [] %} {{ (h_list +
+                [puissance_brute])[-fenetre_moyenne:] }}
+              
+              puissance_filtree: >-
+                {{ (new_historique | sum) / (new_historique | count) if
+                new_historique | count > 0 else puissance_brute }}
+              
+              erreur: "{{ puissance_filtree - target_puissance }}"
+              old_integral: "{{ states('input_number.titan_integral') | float(0) }}"
+              new_integral: "{{ ([ (old_integral + erreur), 500 ] | min, -500) | max }}"
+              consigne_actuelle: "{{ states('input_number.titan_consigne_calculee') | float(0) }}"
+              correction: "{{ (facteur_p * erreur) + (facteur_i * new_integral) }}"
+              
+              # Calcul de la décharge (bridé à 3000W selon votre dernier code)
+              nouvelle_consigne: >-
+                {{ ([ (consigne_actuelle + correction) | int, 3000 ] | min, 0) | max }}
+
+          - if:
+              - condition: template
+                value_template: "{{ (puissance_filtree | abs) > deadband }}"
+            then:
+              - action: input_number.set_value
+                target:
+                  entity_id: input_number.titan_consigne_calculee
+                data:
+                  value: "{{ nouvelle_consigne }}"
+              
+              # Utilisation du nouveau service DISCHARGE officiel
+              - action: izypower_titan_private.discharge
+                data:
+                  device_id: f4e87da5be832718cad4e2012a49f56d
+                  power: "{{ nouvelle_consigne }}"
+                  soc_limit: 10 # Seuil de sécurité décharge
+
+          # Sauvegarde des états pour le prochain cycle
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.historique_puissance_titan
+            data:
+              value: "{{ new_historique | to_json }}"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.titan_integral
+            data:
+              value: "{{ new_integral }}"
+
+variables:
+  # Votre slider est toujours utilisé ici
+  facteur_p: "{{ states('input_number.titan_facteur_p') | float(0.7) }}"
+  facteur_i: 0.2
+  fenetre_moyenne: 4
+  target_puissance: 0
+  deadband: 5
+mode: restart
