@@ -1,3 +1,27 @@
+# ⚠️⚠️ AVERTISSEMENT IMPORTANT ⚠️⚠️  
+
+> **Les automatisations fournies dans ce dépôt sont en version _BÊTA_**  
+> 🔧 Certaines **ne sont pas utilisables en l’état**, mais peuvent servir de base à vos **tests, recherches ou développements**.  
+>  
+> 🧠 Ces scripts sont partagés à titre **expérimental** : vérifiez toujours leur comportement avant une utilisation en production.  
+
+---
+
+## ⚙️ MISE EN GARDE — SYSTEME DEYE  
+> ⚡ **L’utilisation des _Holding Registers_ peut réduire la durée de vie des micro-onduleurs.**  
+>  
+> 🛑 Utilisez-les **avec précaution** et **à vos risques et périls**.  
+>  
+> 💡 Recommandation : privilégiez les méthodes de communication documentées et approuvées par le constructeur lorsque cela est possible.
+
+
+
+
+
+
+
+
+
 French customers. Enedis has recently introduced production mode (letter P on the Linky) for some of their photovoltaic producer customers who do not have a sales contract because their injection into the public network is too high.
 These customers become liable for the TURPE.
 
